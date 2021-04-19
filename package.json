@@ -1,0 +1,26 @@
+{
+  "name": "eris-wrapper",
+  "version": "1.0.0",
+  "description": "A wrapper for Eris",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DevelopmentCubed/Wrapper.git"
+  },
+  "author": "Hazed SPaCEx",
+  "license": "GPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/DevelopmentCubed/Wrapper/issues"
+  },
+  "homepage": "https://github.com/DevelopmentCubed/Wrapper#readme",
+  "dependencies": {
+    "@developmentcubed/logger": "^1.0.0",
+    "bufferutil": "^4.0.3",
+    "eris": "^0.15.0",
+    "erlpack": "github:abalabahaha/erlpack",
+    "zlib-sync": "^0.1.7"
+  }
+}
