@@ -329,7 +329,7 @@ class Wrapper extends Eris.Client {
 		if (!channel) return ['Unknown Channel'];
 		const missing = [];
 		for (const permission of permissions) {
-			if (!channel.permissionsOf(this.bot.user.id).has(permission))
+			if (!channel.permissionsOf(this.user.id).has(permission))
 				missing.push(permission);
 		}
 		return missing;

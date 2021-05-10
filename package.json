@@ -1,6 +1,6 @@
 {
   "name": "eris-wrapper",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A wrapper for Eris",
   "main": "src/index.js",
   "scripts": {
@@ -19,7 +19,7 @@
   "dependencies": {
     "@developmentcubed/logger": "^1.0.0",
     "bufferutil": "^4.0.3",
-    "eris": "^0.15.0",
+    "eris": "^0.15.1",
     "erlpack": "github:abalabahaha/erlpack",
     "zlib-sync": "^0.1.7"
   }
