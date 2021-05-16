@@ -84,7 +84,7 @@ class Wrapper extends Eris.Client {
 		if (this.parseID(command.params[0]) === this.user.id) {
 			command.prefix = `@${this.user.username} `;
 			[, command.command] = command.params.splice(0, 2);
-		} else if (command.params[0].startsWith(this.prefix)) {
+		} else if (command.params[0]?.startsWith(this.prefix)) {
 			command.command = command.params[0].substring(
 				this.prefix.length,
 				command.params[0].length,
@@ -94,7 +94,7 @@ class Wrapper extends Eris.Client {
 			command.params.splice(0, 1);
 		} else if (this.getPrefix && event.guildID) {
 			const prefix = await this.getPrefix(event.guildID);
-			if (command.params[0].startsWith(prefix)) {
+			if (command.params[0]?.startsWith(prefix)) {
 				command.command = command.params[0].substring(
 					prefix.length,
 					command.params[0].length,
@@ -104,7 +104,7 @@ class Wrapper extends Eris.Client {
 				command.params.splice(0, 1);
 			}
 		}
-		if (command.command.includes('\n')) {
+		if (command.command?.includes('\n')) {
 			const split = command.command.split('\n');
 			[command.command] = split.splice(0, 1);
 			command.params.unshift(...split.filter((e) => e.length));
