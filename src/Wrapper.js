@@ -104,6 +104,11 @@ class Wrapper extends Eris.Client {
 				command.params.splice(0, 1);
 			}
 		}
+		if (command.command.includes('\n')) {
+			const split = command.command.split('\n');
+			[command.command] = split.splice(0, 1);
+			command.params.unshift(...split.filter((e) => e.length));
+		}
 
 		if (!command.prefix || !command.command) return null;
 
@@ -217,9 +222,8 @@ class Wrapper extends Eris.Client {
 
 			if (command.cooldown) {
 				if (this.cooldowns[`${event.author.id}:${command.command}`]) {
-					const cooldown = this.cooldowns[
-						`${event.author.id}:${command.command}`
-					];
+					const cooldown =
+						this.cooldowns[`${event.author.id}:${command.command}`];
 					return this.sendMessage(commandObject, {
 						embed: {
 							title: 'Command Cooldown',
@@ -241,7 +245,7 @@ class Wrapper extends Eris.Client {
 
 			try {
 				this.logger.info(
-					`${event.guildID} ${event.author.id} ${commandObject.userTag}: ${event.content}`,
+					`${event.guildID} ${event.author.id} ${commandObject.userTag}: ${event.content.replace('\n','\\n')}`,
 				);
 				command.handle(this, commandObject, this.context);
 			} catch (error) {
