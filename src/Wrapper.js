@@ -3,6 +3,22 @@ const Logger = require('@developmentcubed/logger');
 const Constants = require('./Constants');
 
 /**
+ * @typedef {Object} InteractionObject
+ * @property {string} channelID - Channel interaction happened in
+ * @property {string} guildID - Guild interaction happened in
+ * @property {string} id - ID of interaction
+ * @property {number} componentType - Component Type
+ * @property {string} customID - Custom ID of interaction
+ * @property {string[] | undefined} values - Values from select menu
+ * @property {Eris.Member} member - Member interacting only present if ran in a guild
+ * @property {object} user - User interacting only present if ran in DM
+ * @property {object} message - Message object that the interaction is on
+ * @property {string} token - Token of interaction
+ * @property {number} type - Type of interaction
+ * @property {number} version - Version?
+ */
+
+/**
  * Wrapper class
  *
  * @class Client
@@ -22,16 +38,7 @@ class Wrapper extends Eris.Client {
 	 * @param {string} options.owners - Owners of the bot
 	 * @memberof Wrapper
 	 */
-	constructor({
-		token,
-		options,
-		prefix,
-		commands,
-		events,
-		getPrefix = null,
-		context,
-		owners,
-	}) {
+	constructor({ token, options, prefix, commands, events, getPrefix = null, context, owners }) {
 		super(token, options);
 		this.logger = new Logger();
 
@@ -50,6 +57,9 @@ class Wrapper extends Eris.Client {
 		}
 
 		this.on('messageCreate', this.handleMessage);
+		this.on('rawWS', (packet) => {
+			if (packet.t === 'INTERACTION_CREATE') this.handleInteraction(packet.d);
+		});
 	}
 
 	/**
@@ -85,20 +95,14 @@ class Wrapper extends Eris.Client {
 			command.prefix = `@${this.user.username} `;
 			[, command.command] = command.params.splice(0, 2);
 		} else if (command.params[0]?.startsWith(this.prefix)) {
-			command.command = command.params[0].substring(
-				this.prefix.length,
-				command.params[0].length,
-			);
+			command.command = command.params[0].substring(this.prefix.length, command.params[0].length);
 			if (!command.command.length) return null;
 			command.prefix = this.prefix;
 			command.params.splice(0, 1);
 		} else if (this.getPrefix && event.guildID) {
 			const prefix = await this.getPrefix(event.guildID);
 			if (command.params[0]?.startsWith(prefix)) {
-				command.command = command.params[0].substring(
-					prefix.length,
-					command.params[0].length,
-				);
+				command.command = command.params[0].substring(prefix.length, command.params[0].length);
 				if (!command.command.length) return null;
 				command.prefix = prefix;
 				command.params.splice(0, 1);
@@ -136,11 +140,7 @@ class Wrapper extends Eris.Client {
 			/** @type {import('./Command')} */
 			const command = this.commands[commandName];
 
-			if (
-				command.command !== commandObject.command &&
-				!command.aliases.includes(commandObject.command)
-			)
-				continue;
+			if (command.command !== commandObject.command && !command.aliases.includes(commandObject.command)) continue;
 
 			if (!command.enabled) return;
 
@@ -169,10 +169,7 @@ class Wrapper extends Eris.Client {
 				});
 
 			if (command.userPermissions.length) {
-				const missingPermissions = this.checkUserPermissions(
-					event.member,
-					command.userPermissions,
-				);
+				const missingPermissions = this.checkUserPermissions(event.member, command.userPermissions);
 				if (missingPermissions.length)
 					return this.sendMessage(commandObject, {
 						embed: {
@@ -188,10 +185,7 @@ class Wrapper extends Eris.Client {
 			}
 
 			if (command.botPermissions.length) {
-				const missingPermissions = this.checkUserPermissions(
-					commandObject.guild.members.get(this.user.id),
-					command.botPermissions,
-				);
+				const missingPermissions = this.checkUserPermissions(commandObject.guild.members.get(this.user.id), command.botPermissions);
 				if (missingPermissions.length)
 					return this.sendMessage(commandObject, {
 						embed: {
@@ -206,11 +200,7 @@ class Wrapper extends Eris.Client {
 					});
 			}
 
-			if (
-				command.params.filter(
-					(param, index) => !param.optional && !commandObject.params[index],
-				).length
-			) {
+			if (command.params.filter((param, index) => !param.optional && !commandObject.params[index]).length) {
 				return this.sendMessage(commandObject, {
 					embed: {
 						title: 'Incorrect Usage',
@@ -222,15 +212,11 @@ class Wrapper extends Eris.Client {
 
 			if (command.cooldown) {
 				if (this.cooldowns[`${event.author.id}:${command.command}`]) {
-					const cooldown =
-						this.cooldowns[`${event.author.id}:${command.command}`];
+					const cooldown = this.cooldowns[`${event.author.id}:${command.command}`];
 					return this.sendMessage(commandObject, {
 						embed: {
 							title: 'Command Cooldown',
-							description: `Please try again in **${(
-								(cooldown.time - new Date()) /
-								1000
-							).toFixed(1)} seconds**`,
+							description: `Please try again in **${((cooldown.time - new Date()) / 1000).toFixed(1)} seconds**`,
 							color: Constants.colours.embedGray,
 						},
 					});
@@ -244,16 +230,10 @@ class Wrapper extends Eris.Client {
 			}
 
 			try {
-				this.logger.info(
-					`${event.guildID} ${event.author.id} ${commandObject.userTag}: ${event.content.replace('\n','\\n')}`,
-				);
+				this.logger.info(`${event.guildID} ${event.author.id} ${commandObject.userTag}: ${event.content.replace('\n', '\\n')}`);
 				command.handle(this, commandObject, this.context);
 			} catch (error) {
-				this.logger.error(
-					`${event.guildID} ${event.author.id} ${
-						commandObject.userTag
-					}: ${error.toString()}`,
-				);
+				this.logger.error(`${event.guildID} ${event.author.id} ${commandObject.userTag}: ${error.toString()}`);
 			}
 		}
 	}
@@ -270,14 +250,8 @@ class Wrapper extends Eris.Client {
 	 * @memberof Wrapper
 	 */
 	sanitizeString(content, mentions = true) {
-		content = content
-			.replace(/~/g, '\u200B~')
-			.replace(/\*/g, '\u200B*')
-			.replace(/_/g, '\u200B_')
-			.replace(/`/g, '\u02CB')
-			.replace(/\|/g, '\u200B|');
-		if (mentions)
-			content = content.replace(/@/g, '@\u200B').replace(/#/g, '#\u200B');
+		content = content.replace(/~/g, '\u200B~').replace(/\*/g, '\u200B*').replace(/_/g, '\u200B_').replace(/`/g, '\u02CB').replace(/\|/g, '\u200B|');
+		if (mentions) content = content.replace(/@/g, '@\u200B').replace(/#/g, '#\u200B');
 		return content;
 	}
 
@@ -293,8 +267,7 @@ class Wrapper extends Eris.Client {
 	sendMessage(command, content, returnError = false) {
 		return new Promise(async (resolve, reject) => {
 			try {
-				const channel =
-					typeof command === 'object' ? command.channel.id : command;
+				const channel = typeof command === 'object' ? command.channel.id : command;
 
 				const message = await this.createMessage(channel, content);
 				resolve(message);
@@ -333,8 +306,7 @@ class Wrapper extends Eris.Client {
 		if (!channel) return ['Unknown Channel'];
 		const missing = [];
 		for (const permission of permissions) {
-			if (!channel.permissionsOf(this.user.id).has(permission))
-				missing.push(permission);
+			if (!channel.permissionsOf(this.user.id).has(permission)) missing.push(permission);
 		}
 		return missing;
 	}
@@ -347,12 +319,7 @@ class Wrapper extends Eris.Client {
 	 * @memberof Wrapper
 	 */
 	canSendMessage(channel) {
-		return !this.checkChannelPermissions(channel, [
-			'readMessages',
-			'sendMessages',
-			'readMessageHistory',
-			'embedLinks',
-		]).length;
+		return !this.checkChannelPermissions(channel, ['readMessages', 'sendMessages', 'readMessageHistory', 'embedLinks']).length;
 	}
 
 	/**
@@ -404,6 +371,112 @@ class Wrapper extends Eris.Client {
 		if (user1High > user2High) {
 			return true;
 		} else return false;
+	}
+
+	/**
+	 * @private
+	 */
+	async handleInteraction(packet) {
+		const object = {
+			channelID: packet.channel_id,
+			guildID: packet.guild_id,
+			id: packet.id,
+			componentType: packet.data.component_type,
+			customID: packet.data.custom_id,
+			values: packet.data.values,
+			member: packet.member ? this.guilds.get(packet.guild_id).members.get(packet.member.user.id) : packet.member,
+			user: packet.user,
+			message: packet.message,
+			token: packet.token,
+			type: packet.type,
+			version: packet.version,
+		};
+		this.emit('interaction', object);
+	}
+
+	/**
+	 *	Confirm that an interaction has been received and handled
+	 *
+	 * @param {InteractionObject} interaction
+	 * @param {'PONG' | 'CHANNEL_MESSAGE_WITH_SOURCE' | 'DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE' | 'DEFERRED_UPDATE_MESSAGE' | 'UPDATE_MESSAGE'} type
+	 * @memberof Wrapper
+	 */
+	async confirmInteraction(interaction, type) {
+		try {
+			await this.requestHandler.request('POST', `/interactions/${interaction.id}/${interaction.token}/callback`, true, { type: Constants.interactionCallbackType[type] });
+		} catch (error) {
+			this.logger.error(`Error confirming interaction ${interaction.id}`, error);
+		}
+	}
+
+	/**
+	 * Paginate a message
+	 *
+	 * @param {import('./Command').CommandObject} command
+	 * @param {Eris.AdvancedMessageContent[]} pages
+	 * @param {number} [startingPage=0]
+	 * @param {number} [timeout=12e4]
+	 * @memberof Wrapper
+	 */
+	async pagination(command, pages, startingPage = 0, timeout = 12e4) {
+		let content = pages[startingPage];
+
+		let page = startingPage;
+
+		content.components = [{ type: 1, components: [Constants.createButton('⮜', 'grey', 'left'), Constants.createButton('🗑️', 'red', 'delete'), Constants.createButton('⮞', 'grey', 'right')] }];
+
+		const message = await this.sendMessage(command, content);
+
+		let timer = null;
+
+		/**
+		 * @param {InteractionObject} interaction
+		 */
+		const handle = async (interaction) => {
+			if (interaction.componentType !== 2) return;
+			const userID = interaction?.member?.user?.id ?? interaction.user.id;
+			if (!this.owners.includes(userID) && command.author.id !== userID) return;
+			if (interaction.message.id !== message.id) return;
+			switch (interaction.customID) {
+				case 'left':
+					page--;
+					if (page < 0) page = 0;
+					await message.edit(pages[page]);
+					this.confirmInteraction(interaction, 'UPDATE_MESSAGE');
+					timer = setTimeout(() => {
+						this.off('interaction', handle);
+						pages[page].components = [];
+						message.edit(pages[page]);
+					}, timeout);
+					break;
+
+				case 'delete':
+					this.off('interaction', handle);
+					clearTimeout(timer);
+					message.delete();
+					break;
+
+				case 'right':
+					page++;
+					if (page > pages.length - 1) page = pages.length - 1;
+					await message.edit(pages[page]);
+					this.confirmInteraction(interaction, 'UPDATE_MESSAGE');
+					timer = setTimeout(() => {
+						this.off('interaction', handle);
+						pages[page].components = [];
+						message.edit(pages[page]);
+					}, timeout);
+					break;
+			}
+		};
+
+		this.on('interaction', handle);
+
+		timer = setTimeout(() => {
+			this.off('interaction', handle);
+			pages[page].components = [];
+			message.edit(pages[page]);
+		}, timeout);
 	}
 }
 
