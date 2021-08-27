@@ -161,9 +161,21 @@ class Constants {
 	 * @return {*}
 	 * @memberof Constants
 	 */
-	createButton(label, style, ID = null, URL = null) {
+	createButton(label, style, ID = null, URL = null, emoji = null) {
 		if (!label || !style || (!ID && !URL)) return new Error('Invalid button params.');
 		if (!this.buttonStyles[style]) style = 'blurple';
+
+		if (emoji) {
+			const cleaned = emoji.replace(/(<:)|(<)|(>)/g, '');
+			const split = cleaned.split(':');
+			emoji = {};
+			if (split[0] === 'a') {
+				emoji.animated = true;
+				split.splice(0, 1);
+			}
+			emoji.name = split[0];
+			emoji.id = split[1] ?? null;
+		}
 
 		if (ID)
 			return {
@@ -171,6 +183,7 @@ class Constants {
 				label,
 				style: this.buttonStyles[style],
 				custom_id: ID,
+				emoji,
 			};
 
 		if (URL)
@@ -179,6 +192,7 @@ class Constants {
 				label,
 				style: this.buttonStyles.link,
 				url: URL,
+				emoji,
 			};
 	}
 

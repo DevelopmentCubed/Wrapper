@@ -266,13 +266,14 @@ class Wrapper extends Eris.Client {
 	 */
 	sendMessage(command, content, returnError = false) {
 		return new Promise(async (resolve, reject) => {
+			const channel = typeof command === 'object' ? command.channel.id : command;
 			try {
-				const channel = typeof command === 'object' ? command.channel.id : command;
-
 				const message = await this.createMessage(channel, content);
 				resolve(message);
 			} catch (error) {
-				if (returnError) reject(error);
+				if (returnError) {
+					reject(error);
+				} else this.logger.warning(`Error sending message to ${channel}:`, error.message);
 			}
 		});
 	}
