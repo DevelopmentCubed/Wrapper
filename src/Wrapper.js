@@ -35,10 +35,9 @@ class Wrapper extends Eris.Client {
 	 * @param {any} options.events
 	 * @param {function} [options.getPrefix=null] - Function to get a prefix from a database
 	 * @param {any} options.context - Context object to pass to events and commands
-	 * @param {string} options.owners - Owners of the bot
 	 * @memberof Wrapper
 	 */
-	constructor({ token, options, prefix, commands, events, getPrefix = null, context, owners }) {
+	constructor({ token, options, prefix, commands, events, getPrefix = null, context }) {
 		super(token, options);
 		this.logger = new Logger();
 
@@ -47,7 +46,7 @@ class Wrapper extends Eris.Client {
 		this.prefix = prefix;
 
 		this.context = context;
-		this.owners = owners;
+		this.owners = [];
 
 		this.cooldowns = {};
 
@@ -60,6 +59,24 @@ class Wrapper extends Eris.Client {
 		this.on('rawWS', (packet) => {
 			if (packet.t === 'INTERACTION_CREATE') this.handleInteraction(packet.d);
 		});
+
+		this.getOwners();
+	}
+
+	/**
+	 * Parse owners from OAuth
+	 * @private
+	 * @memberof Wrapper
+	 */
+	async getOwners() {
+		const application = await this.getOAuthApplication();
+		const owners = [];
+		if (application.team) {
+			owners.push(...application.team.members.map((m) => m.user.id));
+		} else {
+			owners.push(application.owner.id);
+		}
+		this.owners = owners;
 	}
 
 	/**
