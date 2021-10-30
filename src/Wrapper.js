@@ -60,7 +60,7 @@ class Wrapper extends Eris.Client {
 			if (packet.t === 'INTERACTION_CREATE') this.handleInteraction(packet.d);
 		});
 
-		this.getOwners();
+		this.once('ready', () => this.getOwners());
 	}
 
 	/**
